@@ -1,20 +1,4 @@
----
-marp: true
-title: Web Frameworks - Technikum Wien Academy - Projektspezifikation
-author: Helmuth Lammer, MSc
-description:
-language: de
-version: 1.1.0
-paginate: true
-theme: a4-document
-style: @import url('https://unpkg.com/tailwindcss@^2/dist/utilities.min.css');
-header: ' '
-footer: '<div>Web Frameworks | Lammer | 2023</div>'
----
-
 # Projekt: Hotel Buchungsoberfläche
-
-[[TOC]]
 
 ---
 ## Kontext und Einordnung
