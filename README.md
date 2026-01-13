@@ -29,6 +29,10 @@ Die Anwendung wird besonders für Mobile Endgeräte entwickelt, soll aber auch a
 <div style="page-break-after: always;"></div>
 
 ## API Spezifikation
+Swagger Docs: 
+
+https://lammer-technikum.github.io/Academy-Template-WEBF/
+
 
 ### **GET** rooms
 
