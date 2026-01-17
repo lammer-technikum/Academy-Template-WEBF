@@ -1,0 +1,695 @@
+openapi: 3.0.3
+info:
+  title: Boutique Hotel Technikum API
+  description: |
+    API für die Hotelbuchungsapp des Boutique-Hotel Technikum.
+    Diese API ermöglicht es Gästen, Hotelzimmer zu buchen, sich zu registrieren und ihre Buchungshistorie einzusehen.
+  version: 2.0.0
+  contact:
+    name: API Support
+    url: https://boutique-hotel.helmuth-lammer.at
+
+servers:
+  - url: https://boutique-hotel.helmuth-lammer.at/api/v1
+    description: Production Server
+
+tags:
+  - name: Rooms
+    description: Hotelzimmer-Verwaltung
+  - name: Bookings
+    description: Buchungsverwaltung
+  - name: Authentication
+    description: Registrierung und Login
+  - name: User
+    description: Benutzer-spezifische Endpunkte (authentifiziert)
+  - name: Guests
+    description: Gäste-Verwaltung
+
+paths:
+  /rooms:
+    get:
+      tags:
+        - Rooms
+      summary: Alle Hotelzimmer abrufen
+      description: Gibt eine Liste aller verfügbaren Hotelzimmer mit Details zurück
+      operationId: getRooms
+      responses:
+        '200':
+          description: Erfolgreiche Abfrage
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+              example:
+                - id: 1
+                  roomNumber: 11
+                  roomName: "Junior Suite"
+                  beds: 3
+                  pricePerNight: 120
+                  extras:
+                    bathRoom: true
+                    minibar: true
+                    television: true
+                    aircondition: true
+                - id: 2
+                  roomNumber: 12
+                  roomName: "Deluxe Room"
+                  beds: 2
+                  pricePerNight: 95
+                  extras:
+                    bathRoom: true
+                    minibar: false
+                    television: true
+                    aircondition: true
+
+  /room/{roomId}/from/{from}/to/{to}:
+    get:
+      tags:
+        - Bookings
+      summary: Verfügbarkeit eines Zimmers prüfen
+      description: Prüft ob ein bestimmtes Zimmer im gewünschten Zeitraum verfügbar ist
+      operationId: checkAvailability
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID des Hotelzimmers
+          schema:
+            type: integer
+            example: 2
+        - name: from
+          in: path
+          required: true
+          description: Startdatum der Buchung
+          schema:
+            type: string
+            format: date
+            example: "2022-12-10"
+        - name: to
+          in: path
+          required: true
+          description: Enddatum der Buchung
+          schema:
+            type: string
+            format: date
+            example: "2022-12-14"
+      responses:
+        '200':
+          description: Zimmer ist verfügbar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    type: integer
+                    example: 200
+        '409':
+          description: Zimmer ist nicht verfügbar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Bookings
+      summary: Zimmer buchen (als Gast)
+      description: Bucht ein Zimmer für einen bestimmten Zeitraum ohne Authentifizierung
+      operationId: bookRoomAsGuest
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID des Hotelzimmers
+          schema:
+            type: integer
+            example: 2
+        - name: from
+          in: path
+          required: true
+          description: Startdatum der Buchung
+          schema:
+            type: string
+            format: date
+            example: "2022-12-10"
+        - name: to
+          in: path
+          required: true
+          description: Enddatum der Buchung
+          schema:
+            type: string
+            format: date
+            example: "2022-12-14"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestBookingRequest'
+      responses:
+        '201':
+          description: Buchung erfolgreich erstellt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Buchungs-ID
+                    example: 1234
+        '400':
+          description: Ungültige Anfrage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Zimmer ist nicht verfügbar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /register:
+    post:
+      tags:
+        - Authentication
+      summary: Benutzer registrieren
+      description: Registriert einen neuen Benutzer und gibt ein Bearer Token zurück
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registrierung erfolgreich
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Bearer Token
+                example: "1|PzId1xtCY3myLtqLAfSNKBtMsppVBB08b2FMYhq5"
+        '400':
+          description: Ungültige Daten
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validierungsfehler
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /login:
+    post:
+      tags:
+        - Authentication
+      summary: Benutzer anmelden
+      description: Meldet einen Benutzer an und gibt ein JWT/Bearer Token zurück
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login erfolgreich
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT Bearer Token
+                    example: "1|PzId1xtCY3myLtqLAfSNKBtMsppVBB08b2FMYhq5"
+        '401':
+          description: Ungültige Anmeldedaten
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user:
+    get:
+      tags:
+        - User
+      summary: Benutzerdaten mit Buchungen abrufen
+      description: Gibt die Daten des authentifizierten Benutzers mit allen Buchungen zurück
+      operationId: getUserWithBookings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Erfolgreiche Abfrage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithBookings'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user/bookings:
+    get:
+      tags:
+        - User
+      summary: Buchungshistorie abrufen
+      description: Gibt die vollständige Buchungshistorie des authentifizierten Benutzers zurück
+      operationId: getUserBookingsHistory
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Erfolgreiche Abfrage
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookingWithRoom'
+              example:
+                - booking:
+                    id: 1234
+                    from: "2022-12-10"
+                    to: "2022-12-14"
+                  room:
+                    id: 1
+                    roomNumber: 11
+                    roomName: "Junior Suite"
+                    beds: 3
+                    pricePerNight: 120
+                    extras:
+                      bathRoom: true
+                      minibar: true
+                      television: true
+                      aircondition: true
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user/room/{roomId}/from/{from}/to/{to}:
+    post:
+      tags:
+        - User
+      summary: Zimmer buchen (authentifiziert)
+      description: Bucht ein Zimmer für einen authentifizierten Benutzer
+      operationId: bookRoomAsUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID des Hotelzimmers
+          schema:
+            type: integer
+            example: 2
+        - name: from
+          in: path
+          required: true
+          description: Startdatum der Buchung
+          schema:
+            type: string
+            format: date
+            example: "2022-12-10"
+        - name: to
+          in: path
+          required: true
+          description: Enddatum der Buchung
+          schema:
+            type: string
+            format: date
+            example: "2022-12-14"
+      requestBody:
+        required: false
+        description: Für authentifizierte Benutzer werden die Daten aus dem Profil übernommen
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                breakfast:
+                  type: boolean
+                  description: Frühstück gewünscht
+      responses:
+        '201':
+          description: Buchung erfolgreich erstellt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Buchungs-ID
+                    example: 1234
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Zimmer ist nicht verfügbar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /bookings:
+    get:
+      tags:
+        - Bookings
+      summary: Alle Buchungen abrufen
+      description: Gibt eine Liste aller Buchungen zurück (Admin/Test)
+      operationId: getAllBookings
+      responses:
+        '200':
+          description: Erfolgreiche Abfrage
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+
+  /guests:
+    get:
+      tags:
+        - Guests
+      summary: Alle Gäste abrufen
+      description: Gibt eine Liste aller Gäste zurück (Admin/Test)
+      operationId: getAllGuests
+      responses:
+        '200':
+          description: Erfolgreiche Abfrage
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Guest'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer Token aus der Registrierung oder dem Login
+
+  schemas:
+    Room:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Eindeutige ID des Zimmers
+          example: 1
+        roomNumber:
+          type: integer
+          description: Zimmernummer
+          example: 11
+        roomName:
+          type: string
+          description: Name/Typ des Zimmers
+          example: "Junior Suite"
+        beds:
+          type: integer
+          description: Anzahl der Betten
+          example: 3
+        pricePerNight:
+          type: number
+          format: float
+          description: Preis pro Nacht in Euro
+          example: 120.00
+        extras:
+          $ref: '#/components/schemas/RoomExtras'
+      required:
+        - id
+        - roomNumber
+        - roomName
+        - beds
+        - pricePerNight
+        - extras
+
+    RoomExtras:
+      type: object
+      properties:
+        bathRoom:
+          type: boolean
+          description: Badezimmer vorhanden
+          example: true
+        minibar:
+          type: boolean
+          description: Minibar vorhanden
+          example: true
+        television:
+          type: boolean
+          description: Fernseher vorhanden
+          example: true
+        aircondition:
+          type: boolean
+          description: Klimaanlage vorhanden
+          example: true
+
+    GuestBookingRequest:
+      type: object
+      properties:
+        firstname:
+          type: string
+          description: Vorname des Gastes
+          example: "Franz"
+        lastname:
+          type: string
+          description: Nachname des Gastes
+          example: "Xaver"
+        email:
+          type: string
+          format: email
+          description: E-Mail-Adresse des Gastes
+          example: "franz@example.com"
+        birthdate:
+          type: string
+          format: date
+          description: Geburtsdatum des Gastes
+          example: "1999-10-04"
+      required:
+        - firstname
+        - lastname
+        - email
+        - birthdate
+
+    RegisterRequest:
+      type: object
+      properties:
+        firstname:
+          type: string
+          description: Vorname
+          example: "Max"
+        lastname:
+          type: string
+          description: Nachname
+          example: "Mustermann"
+        email:
+          type: string
+          format: email
+          description: E-Mail-Adresse
+          example: "max@example.com"
+        username:
+          type: string
+          description: Benutzername
+          example: "maxmuster"
+        password:
+          type: string
+          format: password
+          description: Passwort
+          example: "securePassword123"
+      required:
+        - firstname
+        - lastname
+        - email
+        - username
+        - password
+
+    LoginRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+          format: email
+          description: E-Mail-Adresse des Benutzers
+          example: "max@example.com"
+        secret:
+          type: string
+          format: password
+          description: Passwort des Benutzers
+          example: "securePassword123"
+      required:
+        - clientId
+        - secret
+
+    UserWithBookings:
+      type: object
+      properties:
+        firstname:
+          type: string
+          example: "Max"
+        lastname:
+          type: string
+          example: "Mustermann"
+        email:
+          type: string
+          format: email
+          example: "max@example.com"
+        birthdate:
+          type: string
+          format: date
+          example: "1990-05-15"
+        username:
+          type: string
+          example: "maxmuster"
+        bookings:
+          type: array
+          items:
+            type: object
+            properties:
+              roomId:
+                type: integer
+                example: 2
+              startDate:
+                type: string
+                format: date
+                example: "2022-12-10"
+              endDate:
+                type: string
+                format: date
+                example: "2022-12-14"
+
+    BookingWithRoom:
+      type: object
+      properties:
+        booking:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1234
+            from:
+              type: string
+              format: date
+              example: "2022-12-10"
+            to:
+              type: string
+              format: date
+              example: "2022-12-14"
+        room:
+          $ref: '#/components/schemas/Room'
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        bookingId:
+          type: string
+          example: "BK-2022-001234"
+        from:
+          type: string
+          format: date
+          example: "2022-12-10"
+        to:
+          type: string
+          format: date
+          example: "2022-12-14"
+        rooms_id:
+          type: integer
+          example: 2
+        guest_id:
+          type: integer
+          example: 15
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Guest:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 15
+        firstname:
+          type: string
+          example: "Franz"
+        lastname:
+          type: string
+          example: "Xaver"
+        email:
+          type: string
+          format: email
+          example: "franz@example.com"
+        birthdate:
+          type: string
+          format: date
+          example: "1999-10-04"
+        users_id:
+          type: integer
+          nullable: true
+          example: null
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Fehlermeldung
+          example: "Ein Fehler ist aufgetreten"
+        error:
+          type: string
+          description: Detaillierte Fehlerbeschreibung
+          example: "Das Zimmer ist im gewählten Zeitraum nicht verfügbar"
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "The given data was invalid."
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            email:
+              - "The email field is required."
+              - "The email must be a valid email address."
